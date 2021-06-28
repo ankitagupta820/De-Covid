@@ -1,0 +1,96 @@
+body {
+	background-color: whitesmoke;
+}
+
+#viewDiv {
+	padding: 0;
+	margin: 0;
+	height: 500px;
+	width: 200px;
+}
+
+#Banner-row {
+	padding-bottom: 2rem;
+}
+#Banner-col {
+	background-color: antiquewhite;
+	padding-top: 1rem;
+	padding-bottom: 0.5rem;
+	padding-left: 8rem;
+}
+
+img {
+	float: left;
+	margin-right: 1rem;
+	padding: 0.2rem;
+}
+
+h1 {
+	position: relative;
+	font-size: 3rem;
+	font-family: "Times New Roman", Times, serif;
+}
+
+#details-container {
+	margin-top: 2rem;
+	margin-bottom: 2rem;
+	overflow-y: auto;
+	height: 500px;
+
+	background-color: white;
+}
+
+.button-row {
+	justify-content: center;
+}
+
+.button-col {
+	margin-top: 2rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.text {
+	width: 150px;
+	margin-right: 20px;
+}
+
+#table-container {
+	margin-top: 2rem;
+	margin-bottom: 2rem;
+	padding-left: 2rem;
+	padding-right: 2rem;
+}
+
+table {
+	background-color: seashell;
+	border: 1px solid black;
+}
+
+th {
+	text-align: left;
+	width: 25%;
+	padding: 0.2rem;
+}
+
+td {
+	text-align: center;
+	text-align: left;
+	width: 75%;
+	border-bottom: black;
+	padding: 0.2rem;
+}
+
+.footer {
+	text-align: center;
+	vertical-align: middle;
+	height: 3rem;
+	background-color: antiquewhite;
+}
+
+p {
+	text-align: center;
+	line-height: 1.5rem;
+	background-color: antiquewhite;
+}

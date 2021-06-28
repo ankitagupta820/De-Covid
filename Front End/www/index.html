@@ -1,0 +1,434 @@
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>De-Covid</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.18/esri/themes/light/main.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-BmbxuPwQa2lc/FVzBcNJ7UAyJxM6wuqIj61tLrc4wSX0szH/Ev+nYRRuWlolflfl" crossorigin="anonymous">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://js.arcgis.com/4.18/"></script>
+    <script>
+
+        var backend_URL = "https://de-covid.azurewebsites.net"
+        var registerUser
+
+        require(["esri/config",
+            "esri/Map",
+            "esri/views/MapView",
+            "esri/widgets/BasemapToggle",
+            "esri/widgets/BasemapGallery",
+            "esri/Graphic",
+            "esri/layers/GraphicsLayer",
+            "esri/widgets/Locate",
+            "esri/widgets/Track",
+            "esri/Graphic",
+            "dojo/domReady!",
+            "dojo/dom",
+            "dojo/on",
+            "esri/widgets/LayerList"], function (esriConfig, Map, MapView, BasemapToggle, BasemapGallery, Graphic, GraphicsLayer, Locate, Track,
+                Graphic, dom, on, LayerList) {
+
+            esriConfig.apiKey = "AAPKb5154b7071c04294b7f6f44df4d26ed1L0wgmPPFEmC6dENKjncAvksYwdPL119EYl_yw-hlWbzizc_CzYI5_Am3K8RWU49";
+
+
+            const map = new Map({
+                basemap: "topo",
+
+            });
+
+            getCurLocation(renderMaps)
+
+            registerUser = function () {
+                getCurLocation(registerUserLocation)
+            }
+
+            function registerUserLocation(position) {
+
+                let lat = position.coords.latitude
+                let long = position.coords.longitude
+                let name = document.getElementById("name").value
+                let email = document.getElementById("email").value
+                let status = document.getElementById("status-select").value
+
+                var URL = backend_URL + "/user/add?"
+                URL += "long=" + long + "&lat=" + lat + "&name=" + name + "&email=" + email + "&status=" + status
+                let xhr = new XMLHttpRequest();
+                xhr.open("GET", URL, true);
+                xhr.onreadystatechange = function (ev) {
+                    if (xhr.readyState == 4) {
+                        console.log("User Data Recieved.");
+                        switch (xhr.status) {
+                            case 200: {
+                                console.log(JSON.parse(xhr.responseText));
+                                document.getElementById("name").value = "";
+                                document.getElementById("email").value = "";
+                                break;
+                            }
+                            default:
+                                console.log(xhr.status + " HTTP Error Occured!! ");
+                        }
+                    }
+                };
+                xhr.onerror = function (err) {
+                    console.warn(err);
+                };
+                xhr.send(null);
+            }
+
+            function getCurLocation(callback) {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(callback);
+                } else {
+                    console.log("Geolocation is not supported by this browser.")
+                }
+            }
+
+            function renderMaps(position) {
+
+                var location = [position.coords.longitude, position.coords.latitude]
+                console.log("Your current location is, Latitude: " + location[0] +
+                    " Longitude: " + location[1])
+
+                renderBaseMap(location)
+                fetchVaccineData(location)
+                fetchUserData()
+            }
+
+
+            function renderBaseMap(location) {
+
+                const view = new MapView({
+                    map: map,
+                    center: location,
+                    zoom: 13,
+                    container: "viewDiv"
+                });
+
+                const basemapToggle = new BasemapToggle({
+                    view: view,
+                    basemap: "streets-vector"
+                });
+
+                view.ui.add(basemapToggle, "bottom-right");
+
+                const locate = new Locate({
+                    view: view,
+                    useHeadingEnabled: false,
+                    goToOverride: function (view, options) {
+                        options.target.scale = 150000;
+                        return view.goTo(options.target);
+                    },
+                    symbol: {
+                        type: "simple-marker",
+                        size: "30px",
+                        color: "blue",
+                        outline: {
+                            color: "#efefef",
+                            width: "1.5px"
+                        }
+                    }
+                });
+                view.ui.add(locate, "top-left");
+
+
+            }
+
+            function fetchUserData() {
+
+                var URL = backend_URL + "/user/get"
+                let xhr = new XMLHttpRequest();
+                xhr.open("GET", URL, true);
+                xhr.onreadystatechange = function (ev) {
+                    if (xhr.readyState == 4) {
+                        console.log("User Data fetched");
+                        switch (xhr.status) {
+                            case 200: {
+                                mapUserPoints(JSON.parse(xhr.responseText).users);
+                                break;
+                            }
+                            default:
+                                console.log(xhr.status + " HTTP Error Occured!! ");
+                        }
+                    }
+                };
+                xhr.onerror = function (err) {
+                    console.warn(err);
+                };
+                xhr.send(null);
+            }
+
+            function fetchVaccineData(location) {
+
+                var URL = "https://services.arcgis.com/8ZpVMShClf8U8dae/arcgis/rest/services/Covid19_Vaccination_Locations/FeatureServer/0/query?where=1%3D1&outFields=*&geometry="
+                URL = URL + location[0] + "%2C" + location[1]
+                //URL = URL + "-117.28%2C34.02"
+                URL = URL + "&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelContains&distance=10000&units=esriSRUnit_Meter&outSR=4326&f=json"
+
+                let xhr = new XMLHttpRequest();
+                xhr.open("GET", URL, true);
+                xhr.onreadystatechange = function (ev) {
+                    if (xhr.readyState == 4) {
+                        console.log("Vaccine Center data recieved.");
+                        switch (xhr.status) {
+                            case 200: {
+                                mapVaccinePoints(JSON.parse(xhr.responseText).features);
+                                tabulateData(JSON.parse(xhr.responseText).features);
+                                break;
+                            }
+                            default:
+                                console.log(xhr.status + " HTTP Error Occured!! ");
+                        }
+                    }
+                };
+                xhr.onerror = function (err) {
+                    console.warn(err);
+                };
+                xhr.send(null);
+            }
+
+            function mapVaccinePoints(siteData) {
+
+                const vaccine_Layer = new GraphicsLayer();
+                map.add(vaccine_Layer);
+
+                const vaccineMarker = {
+                    type: "picture-marker",
+                    url: "images/vaccine.png",
+                    width: 30,
+                    height: 30
+                };
+
+                const testingMarker = {
+                    type: "picture-marker",
+                    url: "images/test.png",
+                    width: 50,
+                    height: 50
+                }
+
+                const tooltip = {
+                    "title": "TITLE",
+                    "content": "CONTENT"
+                }
+
+                for (site of siteData) {
+
+                    let geometry = site.geometry
+                    let attributes = site.attributes
+
+                    geometry.type = "point"
+
+
+                    tooltip.title = "<b>" + attributes.name + "<b>"
+                    tooltip.content =
+                        "<b>Facility Name:</b> " + attributes.name +
+                        "<br><b>Address: </b> " + attributes.fulladdr +
+                        "<br><b>County: </b>" + attributes.county +
+                        "<br><b>Phone: </b>" + attributes.phone +
+                        "<br><b>Vaccine Link: </b> " + attributes.vaccine_url +
+                        "<br><b>Status: </b> " + attributes.status +
+                        "<br><b>Vaccine Available: </b> " + attributes.offers_vaccine
+
+
+                    const marker = attributes.offers_vaccine == "Yes" ? vaccineMarker : testingMarker
+
+                    const pointGraphic = new Graphic({
+                        geometry: geometry,
+                        symbol: marker,
+                        popupTemplate: tooltip
+                    });
+
+                    vaccine_Layer.add(pointGraphic);
+                }
+            }
+
+            function mapUserPoints(users) {
+
+                const user_layer = new GraphicsLayer();
+                map.add(user_layer);
+
+                const userMarker = {
+                    type: "simple-marker",
+                    size: "15px",
+                    color: "red",
+                    outline: {
+                        color: "#efefef",
+                        width: "1.5px"
+                    }
+                };
+
+                const tooltip = {
+                    "title": "TITLE",
+                    "content": "CONTENT"
+                }
+
+                for (user of users) {
+
+                    const point = {
+                        type: 'point',
+                        longitude: user[3],
+                        latitude: user[2]
+                    }
+
+                    tooltip.title = "<b>" + user[1] + "<b>"
+                    tooltip.content =
+                        "<b>Vaccine Status:</b> " + user[4] +
+                        "<br><b>Email: </b>" + user[0]
+
+                    user[4] == 'Recieved' ? userMarker.color = 'green' : userMarker.color = 'red'
+                    const userGraphic = new Graphic({
+                        geometry: point,
+                        symbol: userMarker,
+                        popupTemplate: tooltip
+                    });
+
+                    user_layer.add(userGraphic);
+                }
+            }
+
+
+            function tabulateData(siteData) {
+
+                table_div = document.getElementById("details-container");
+                var table = '';
+
+                for (site of siteData) {
+
+                    attributes = site.attributes
+
+                    table += '<div class="row" id="table-container"><table>';
+                    table +=
+                        "<tr><th>Facility Name: </th><td><b>" + attributes.name + "</b></td></tr>";
+
+                    table +=
+                        "<tr><th>Operation Hours: </th><td>" + attributes.operhours + "</td></tr>";
+
+                    table +=
+                        "<tr><th>Facility Type: </th><td>" + attributes.facility_type + "</td></tr>";
+
+                    table +=
+                        '<tr><th>Drive-through: </th><td class="description">' + attributes.drive_through + "</td></tr>";
+                    table +=
+                        '<tr><th>Test Type: </th><td class="description">' + attributes.type_of_test + "</td></tr>";
+
+
+                    table +=
+                        "<tr><th>Take home Test: </th><td>" + attributes.take_home_test + "</td></tr>";
+
+                    table +=
+                        "<tr><th>Same Day Results: </th><td>" + attributes.Same_Day_Results + "</td></tr>";
+                    table +=
+                        "<tr><th>Appointment Only: </th><td>" + attributes.appt_only + "</td></tr>";
+
+                    table +=
+                        "<tr><th>Call First: </th><td>" + attributes.call_first + "</td></tr>";
+
+                    table +=
+                        "<tr><th>Wheelchair Accessible: </th><td>" + attributes.Wheelchair_Accessible + "</td></tr>";
+
+                    table +=
+                        "<tr><th>Accessibility Support: </th><td>" + attributes.Accessibility_Support + "</td></tr>";
+
+
+                    table +=
+                        '<tr><th>Instructions: </th><td class="description">' + attributes.Instructions + "</td></tr>";
+
+
+
+
+                    table += "</table></div>"
+                }
+                table += "</div></div>";
+                table_div.innerHTML += table
+            }
+
+
+        });
+
+        function updateStatus() {
+
+            let status = document.getElementById("status-select").value;
+            let email = document.getElementById("email").value;
+
+            var URL = backend_URL + "/user/update?"
+            URL += "email=" + email + "&status=" + status
+            let xhr = new XMLHttpRequest();
+            xhr.open("GET", URL, true);
+            xhr.onreadystatechange = function (ev) {
+                if (xhr.readyState == 4) {
+                    console.log("updateStatus Response Recieved");
+                    switch (xhr.status) {
+                        case 200: {
+                            console.log(JSON.parse(xhr.responseText));
+                            document.getElementById("name").value = "";
+                            document.getElementById("email").value = "";
+                            break;
+                        }
+                        default:
+                            console.log(xhr.status + " HTTP Error Occured!! ");
+                    }
+                }
+            };
+            xhr.onerror = function (err) {
+                console.warn(err);
+            };
+            xhr.send(null);
+
+        }
+
+    </script>
+</head>
+
+<body>
+    <div class="row" id="Banner-row">
+        <div class="col" id="Banner-col">
+            <span>
+                <img src="images/vaccine.png">
+                <h1>De-Covid</h1>
+            </span>
+        </div>
+    </div>
+    <div class="container">
+        <div class="row">
+            <div class="col" id="viewDiv"></div>
+        </div>
+    </div>
+    <div class="container">
+        <div class="row">
+            <div class="col button-col">
+                <label for="name">Name:</label>
+                <input type="text" id="name" class="text form-control"></input>
+                <label for="email">Email:</label>
+                <input type="text" id="email" class="text form-control"></input>
+                <label for="status">Got your Shot?</label>
+                <select name="status" id="status-select" class="form-select text">
+                    <option value="Recieved">Recieved</option>
+                    <option value="Awaited">Awaited</option>
+                </select>
+            </div>
+        </div>
+        <div class='row'>
+            <div class='col button-col'>
+                <Button type="button" class="btn btn-info text" id="register" onclick="registerUser()">Register</Button>
+                <Button type="button" class="btn btn-info text" id="statusButton" onClick="updateStatus()">Update
+                    Status</Button>
+            </div>
+        </div>
+    </div>
+    <div class="container" id="details-container">
+    </div>
+
+    <div class="row footer text-secondary">
+        <p> Developed by Ankita Gupta @ AthenaHacks 2021 <br>Powered by: CockroachDB, Google Cloud Platform,
+            Microsoft
+            Azure, Esri ArcGIS</p>
+        <p></p>
+    </div>
+
+
+</body>
+
+
+
+</html>
